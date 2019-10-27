@@ -4,12 +4,11 @@ import ru.javawebinar.topjava.model.UserMeal;
 import ru.javawebinar.topjava.model.UserMealWithExceed;
 
 import javax.rmi.CORBA.Util;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Month;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class UserMealsUtil {
@@ -22,17 +21,24 @@ public class UserMealsUtil {
                 new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 13, 0), "Обед", 500),
                 new UserMeal(LocalDateTime.of(2015, Month.MAY, 31, 20, 0), "Ужин", 510)
         );
-        getFilteredWithExceeded(mealList, LocalTime.of(7, 0), LocalTime.of(12, 0), 2000);
+        List<UserMealWithExceed> filteredWithExceeded = getFilteredWithExceeded(mealList, LocalTime.of(7, 0), LocalTime.of(12, 0), 2000);
+        System.out.println();
 //        .toLocalDate();
 //        .toLocalTime();
     }
 
     public static List<UserMealWithExceed> getFilteredWithExceeded(List<UserMeal> mealList, LocalTime startTime, LocalTime endTime, int caloriesPerDay) {
-        List<UserMealWithExceed> result = new ArrayList<>();
-        mealList.forEach(userMeal -> {
-            boolean between = TimeUtil.isBetween(userMeal.getDateTime().toLocalTime(), startTime, endTime);
-            result.add(new UserMealWithExceed(userMeal, !between));
-        });
-        return result;
+        Map<LocalDate, Integer> map = new HashMap<>();
+        mealList.forEach(userMeal -> map.merge(userMeal.getDateTime().toLocalDate(), userMeal.getCalories(), Integer::sum));
+        return mealList
+                .stream()
+                .map(userMeal -> {
+                    if (TimeUtil.isBetween(userMeal.getDateTime().toLocalTime(), startTime, endTime)) {
+                        return new UserMealWithExceed(userMeal, map.get(userMeal.getDateTime().toLocalDate()) > caloriesPerDay);
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 }
